@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Wall Reaction Game</title>
+  <title>Wall Reaction Game - Portrait</title>
   <style>
     body {
       margin: 0;
@@ -17,14 +17,16 @@
 
     canvas {
       background: #000;
-      touch-action: none; /* Prevent scrolling on mobile */
+      touch-action: none;
     }
 
     .hud {
       position: absolute;
       top: 20px;
-      left: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 18px;
+      text-align: center;
     }
 
     .center-message {
@@ -68,7 +70,7 @@
   GAME OVER
 </div>
 
-<canvas id="game" width="800" height="400"></canvas>
+<canvas id="game" width="400" height="700"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
@@ -81,7 +83,7 @@ const gameOverEl = document.getElementById("gameover");
 
 const WALL_THICKNESS = 8;
 const SPEED_INCREASE_FACTOR = 1.03;
-const TOUCH_MARGIN = 20; // extra tap area around walls
+const TOUCH_MARGIN = 20;
 
 const walls = {
   left: false,
@@ -95,7 +97,6 @@ let gameOver = false;
 let gameStarted = false;
 let awaitingFirstWall = false;
 
-// High score
 let highScore = Number(localStorage.getItem("wallGameHighScore")) || 0;
 highScoreEl.textContent = highScore;
 
@@ -109,18 +110,15 @@ const ball = {
 
 let lastTime = performance.now();
 
-// Reset walls
 function resetWalls() {
   for (let w in walls) walls[w] = false;
 }
 
-// Activate a wall
 function activateWall(name) {
   resetWalls();
   walls[name] = true;
 }
 
-// Randomize ball direction but make it angular
 function setAngularBallDirection(speed = 180) {
   let angle;
   do {
@@ -133,7 +131,6 @@ function setAngularBallDirection(speed = 180) {
   ball.vy = speed * Math.sin(angle);
 }
 
-// Reset the game after game over
 function resetGame() {
   score = 0;
   scoreEl.textContent = score;
@@ -150,12 +147,10 @@ function resetGame() {
   setAngularBallDirection();
 
   gameOverEl.style.display = "none";
-
   startMessage.style.display = "block";
   startMessage.textContent = "Press an arrow key or tap to start";
 }
 
-// Determine which wall a touch is closest to
 function getWallFromTouch(x, y) {
   if (x <= WALL_THICKNESS + TOUCH_MARGIN) return "left";
   if (x >= canvas.width - WALL_THICKNESS - TOUCH_MARGIN) return "right";
@@ -164,7 +159,6 @@ function getWallFromTouch(x, y) {
   return null;
 }
 
-// Handle both keyboard and touch
 window.addEventListener("keydown", e => {
   if (!e.key.startsWith("Arrow")) return;
 
@@ -177,7 +171,7 @@ window.addEventListener("keydown", e => {
     gameStarted = true;
     awaitingFirstWall = true;
     startMessage.style.display = "none";
-    return; // Do not activate wall yet
+    return;
   }
 
   if (awaitingFirstWall) awaitingFirstWall = false;
@@ -188,13 +182,11 @@ window.addEventListener("keydown", e => {
   if (e.key === "ArrowDown") activateWall("bottom");
 });
 
-// Touch or click support
 canvas.addEventListener("touchstart", handleTouchOrClick);
 canvas.addEventListener("mousedown", handleTouchOrClick);
 
 function handleTouchOrClick(e) {
   e.preventDefault();
-
   let rect = canvas.getBoundingClientRect();
   let x, y;
 
@@ -206,7 +198,6 @@ function handleTouchOrClick(e) {
     y = e.clientY - rect.top;
   }
 
-  // Start the game if not started
   if (!gameStarted) {
     gameStarted = true;
     awaitingFirstWall = true;
@@ -251,37 +242,10 @@ function update(dt) {
 
   if (awaitingFirstWall) return;
 
-  if (ball.x - ball.radius <= 0) {
-    if (walls.left) {
-      ball.x = ball.radius;
-      ball.vx *= -1;
-      registerHit();
-    } else endGame();
-  }
-
-  if (ball.x + ball.radius >= canvas.width) {
-    if (walls.right) {
-      ball.x = canvas.width - ball.radius;
-      ball.vx *= -1;
-      registerHit();
-    } else endGame();
-  }
-
-  if (ball.y - ball.radius <= 0) {
-    if (walls.top) {
-      ball.y = ball.radius;
-      ball.vy *= -1;
-      registerHit();
-    } else endGame();
-  }
-
-  if (ball.y + ball.radius >= canvas.height) {
-    if (walls.bottom) {
-      ball.y = canvas.height - ball.radius;
-      ball.vy *= -1;
-      registerHit();
-    } else endGame();
-  }
+  if (ball.x - ball.radius <= 0) walls.left ? (ball.x = ball.radius, ball.vx *= -1, registerHit()) : endGame();
+  if (ball.x + ball.radius >= canvas.width) walls.right ? (ball.x = canvas.width - ball.radius, ball.vx *= -1, registerHit()) : endGame();
+  if (ball.y - ball.radius <= 0) walls.top ? (ball.y = ball.radius, ball.vy *= -1, registerHit()) : endGame();
+  if (ball.y + ball.radius >= canvas.height) walls.bottom ? (ball.y = canvas.height - ball.radius, ball.vy *= -1, registerHit()) : endGame();
 }
 
 function drawWalls() {
