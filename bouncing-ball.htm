@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Wall Reaction Game</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      background: #000;
+      touch-action: none; /* Prevent scrolling on mobile */
+    }
+
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 18px;
+    }
+
+    .center-message {
+      position: absolute;
+      font-size: 28px;
+      color: #aaa;
+      text-align: center;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .gameover {
+      position: absolute;
+      font-size: 36px;
+      color: red;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #startMessage {
+      top: 55%;
+    }
+
+    #gameover {
+      top: 45%;
+    }
+  </style>
+</head>
+<body>
+
+<div class="hud">
+  Score: <span id="score">0</span><br />
+  High Score: <span id="highScore">0</span>
+</div>
+
+<div id="startMessage" class="center-message">
+  Press an arrow key or tap to start
+</div>
+
+<div id="gameover" class="gameover" style="display:none;">
+  GAME OVER
+</div>
+
+<canvas id="game" width="800" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreEl = document.getElementById("score");
+const highScoreEl = document.getElementById("highScore");
+const startMessage = document.getElementById("startMessage");
+const gameOverEl = document.getElementById("gameover");
+
+const WALL_THICKNESS = 8;
+const SPEED_INCREASE_FACTOR = 1.03;
+const TOUCH_MARGIN = 20; // extra tap area around walls
+
+const walls = {
+  left: false,
+  right: false,
+  top: false,
+  bottom: false
+};
+
+let score = 0;
+let gameOver = false;
+let gameStarted = false;
+let awaitingFirstWall = false;
+
+// High score
+let highScore = Number(localStorage.getItem("wallGameHighScore")) || 0;
+highScoreEl.textContent = highScore;
+
+const ball = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: 10,
+  vx: 180,
+  vy: 120
+};
+
+let lastTime = performance.now();
+
+// Reset walls
+function resetWalls() {
+  for (let w in walls) walls[w] = false;
+}
+
+// Activate a wall
+function activateWall(name) {
+  resetWalls();
+  walls[name] = true;
+}
+
+// Randomize ball direction but make it angular
+function setAngularBallDirection(speed = 180) {
+  let angle;
+  do {
+    angle = Math.random() * 2 * Math.PI;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    if (Math.abs(vx) >= 0.5 * speed && Math.abs(vy) >= 0.5 * speed) break;
+  } while (true);
+  ball.vx = speed * Math.cos(angle);
+  ball.vy = speed * Math.sin(angle);
+}
+
+// Reset the game after game over
+function resetGame() {
+  score = 0;
+  scoreEl.textContent = score;
+
+  gameOver = false;
+  gameStarted = false;
+  awaitingFirstWall = false;
+
+  resetWalls();
+
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+
+  setAngularBallDirection();
+
+  gameOverEl.style.display = "none";
+
+  startMessage.style.display = "block";
+  startMessage.textContent = "Press an arrow key or tap to start";
+}
+
+// Determine which wall a touch is closest to
+function getWallFromTouch(x, y) {
+  if (x <= WALL_THICKNESS + TOUCH_MARGIN) return "left";
+  if (x >= canvas.width - WALL_THICKNESS - TOUCH_MARGIN) return "right";
+  if (y <= WALL_THICKNESS + TOUCH_MARGIN) return "top";
+  if (y >= canvas.height - WALL_THICKNESS - TOUCH_MARGIN) return "bottom";
+  return null;
+}
+
+// Handle both keyboard and touch
+window.addEventListener("keydown", e => {
+  if (!e.key.startsWith("Arrow")) return;
+
+  if (gameOver) {
+    resetGame();
+    return;
+  }
+
+  if (!gameStarted) {
+    gameStarted = true;
+    awaitingFirstWall = true;
+    startMessage.style.display = "none";
+    return; // Do not activate wall yet
+  }
+
+  if (awaitingFirstWall) awaitingFirstWall = false;
+
+  if (e.key === "ArrowLeft") activateWall("left");
+  if (e.key === "ArrowRight") activateWall("right");
+  if (e.key === "ArrowUp") activateWall("top");
+  if (e.key === "ArrowDown") activateWall("bottom");
+});
+
+// Touch or click support
+canvas.addEventListener("touchstart", handleTouchOrClick);
+canvas.addEventListener("mousedown", handleTouchOrClick);
+
+function handleTouchOrClick(e) {
+  e.preventDefault();
+
+  let rect = canvas.getBoundingClientRect();
+  let x, y;
+
+  if (e.touches) {
+    x = e.touches[0].clientX - rect.left;
+    y = e.touches[0].clientY - rect.top;
+  } else {
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+  }
+
+  // Start the game if not started
+  if (!gameStarted) {
+    gameStarted = true;
+    awaitingFirstWall = true;
+    startMessage.style.display = "none";
+    return;
+  }
+
+  if (awaitingFirstWall) awaitingFirstWall = false;
+
+  const wall = getWallFromTouch(x, y);
+  if (wall) activateWall(wall);
+}
+
+function increaseSpeed() {
+  ball.vx *= SPEED_INCREASE_FACTOR;
+  ball.vy *= SPEED_INCREASE_FACTOR;
+}
+
+function registerHit() {
+  score++;
+  scoreEl.textContent = score;
+  increaseSpeed();
+}
+
+function endGame() {
+  gameOver = true;
+  gameOverEl.style.display = "block";
+  startMessage.style.display = "block";
+
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("wallGameHighScore", highScore);
+    highScoreEl.textContent = highScore;
+  }
+}
+
+function update(dt) {
+  if (!gameStarted || gameOver) return;
+
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+
+  if (awaitingFirstWall) return;
+
+  if (ball.x - ball.radius <= 0) {
+    if (walls.left) {
+      ball.x = ball.radius;
+      ball.vx *= -1;
+      registerHit();
+    } else endGame();
+  }
+
+  if (ball.x + ball.radius >= canvas.width) {
+    if (walls.right) {
+      ball.x = canvas.width - ball.radius;
+      ball.vx *= -1;
+      registerHit();
+    } else endGame();
+  }
+
+  if (ball.y - ball.radius <= 0) {
+    if (walls.top) {
+      ball.y = ball.radius;
+      ball.vy *= -1;
+      registerHit();
+    } else endGame();
+  }
+
+  if (ball.y + ball.radius >= canvas.height) {
+    if (walls.bottom) {
+      ball.y = canvas.height - ball.radius;
+      ball.vy *= -1;
+      registerHit();
+    } else endGame();
+  }
+}
+
+function drawWalls() {
+  ctx.fillStyle = walls.left ? "red" : "#555";
+  ctx.fillRect(0, 0, WALL_THICKNESS, canvas.height);
+
+  ctx.fillStyle = walls.right ? "red" : "#555";
+  ctx.fillRect(canvas.width - WALL_THICKNESS, 0, WALL_THICKNESS, canvas.height);
+
+  ctx.fillStyle = walls.top ? "red" : "#555";
+  ctx.fillRect(0, 0, canvas.width, WALL_THICKNESS);
+
+  ctx.fillStyle = walls.bottom ? "red" : "#555";
+  ctx.fillRect(0, canvas.height - WALL_THICKNESS, canvas.width, WALL_THICKNESS);
+}
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#00ffcc";
+  ctx.fill();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawWalls();
+  drawBall();
+}
+
+function loop(time) {
+  const dt = (time - lastTime) / 1000;
+  lastTime = time;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
