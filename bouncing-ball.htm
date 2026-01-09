@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Wall Reaction Game - Responsive</title>
+<title>Wall Reaction Game - Responsive Portrait</title>
 <style>
   body {
     margin: 0;
@@ -20,11 +20,12 @@
   }
   .hud {
     position: absolute;
-    top: 20px;
+    top: 20px; /* always above top wall */
     left: 50%;
     transform: translateX(-50%);
     font-size: 18px;
     text-align: center;
+    z-index: 10;
   }
   .center-message {
     position: absolute;
@@ -33,6 +34,7 @@
     text-align: center;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 10;
   }
   .gameover {
     position: absolute;
@@ -40,6 +42,7 @@
     color: red;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 10;
   }
   #startMessage { top: 55%; }
   #gameover { top: 45%; }
@@ -85,15 +88,16 @@ let awaitingFirstWall = false;
 let WALL_THICKNESS = 8;
 let TOUCH_MARGIN = 20;
 let ballSpeed = 180;
+let BALL_RADIUS = 10;
+let TOP_MARGIN = 40; // space for HUD above top wall
 
-const ball = { x: 0, y: 0, radius: 10, vx: 0, vy: 0 };
+const ball = { x: 0, y: 0, radius: BALL_RADIUS, vx: 0, vy: 0 };
 let lastTime = performance.now();
 
-// Update canvas size to fit device while keeping portrait ratio
 function resizeCanvas() {
   let width = window.innerWidth;
-  let height = window.innerHeight;
-  
+  let height = window.innerHeight * 0.95; // leave a little margin so bottom wall is visible
+
   // Keep 4:7 ratio
   if (width / height > 4/7) width = height * 4/7;
   else height = width * 7/4;
@@ -101,10 +105,11 @@ function resizeCanvas() {
   canvas.width = width;
   canvas.height = height;
 
-  WALL_THICKNESS = canvas.width * 0.02; // 2% of width
+  WALL_THICKNESS = canvas.width * 0.02;
   TOUCH_MARGIN = WALL_THICKNESS * 3;
-  ball.radius = canvas.width * 0.025; // 2.5% of width
-  ballSpeed = canvas.width * 0.45; // proportional speed
+  BALL_RADIUS = canvas.width * 0.025;
+  ball.radius = BALL_RADIUS;
+  ballSpeed = canvas.width * 0.45;
 
   if (!gameStarted) resetGame();
 }
