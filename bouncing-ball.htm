@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wall Reaction Game – Version 9</title>
+  <title>Wall Reaction Game – Version 10</title>
   <style>
     body {
       margin: 0;
@@ -93,7 +93,7 @@
 
   function resize() {
     const width = Math.min(window.innerWidth * 0.95, 420);
-    const height = width * 1.25; // portrait ratio (same on all devices)
+    const height = width * 1.25;
 
     canvas.width = width;
     canvas.height = height;
@@ -127,12 +127,16 @@
     gameOver = false;
     gameOverEl.style.display = 'none';
     startMessage.style.display = 'none';
+
+    // Clear all wall activations before starting
+    for (let w in walls) walls[w] = false;
+
     resetBall();
   }
 
   function endGame() {
     gameOver = true;
-    gameStarted = false; // allow restart
+    gameStarted = false;
     gameOverEl.style.display = 'block';
     startMessage.style.display = 'block';
 
